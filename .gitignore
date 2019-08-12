@@ -1,0 +1,16 @@
+*.egg-info/
+pip-wheel-metadata/
+dist/
+
+*.env
+
+.venv/
+venv/
+
+.vscode/
+
+__pycache__
+.mypy_cache
+
+.DS_Store
+
