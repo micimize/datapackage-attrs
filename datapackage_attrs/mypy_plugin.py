@@ -19,6 +19,12 @@ class MyPlugin(Plugin):
         return None
 
 
+# You can either tediously construct the ClassDef Block with
+# AssignmentStmt(NameExpr('bar'), TempNode(Any), type=UnboundType('int', [], int)), etc
+# or reconstruct the class string.
+# There's already an attrs plugin for mypy, so maybe you can just decorate the constructed class
+# here and leverage that.
+# Also, if you just generate class strings, you can generate code later easily
 def schema_info_hook(ctx: DynamicClassDefContext) -> None:
     class_def = nodes.ClassDef(ctx.name, nodes.Block([]))
     class_def.fullname = ctx.api.qualified_name(ctx.name)
