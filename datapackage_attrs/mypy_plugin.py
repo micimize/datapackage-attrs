@@ -17,7 +17,7 @@ from mypy.plugins import attrs as mypy_attrs
 # from tableschema import Field, Schema
 
 
-def parse_hack(class_def: str) -> nodes.ClassDef:
+def parse_hack(class_def: str):
     return mypy_parse(dedent(class_def), "", "", None, Options()).defs[0]
 
 
@@ -35,18 +35,28 @@ def schema_info_hook(ctx: DynamicClassDefContext) -> None:
         """
         @attr.s(auto_attribs=True)
         class Foo:
+            "wooow"
             bar: int
             baz: str
         """
     )
     class_def.fullname = ctx.api.qualified_name(ctx.name)
     class_def.info = build_info(class_def, ctx)
-    new_ctx = ClassDefContext(class_def, "dynamic class generation", ctx.api)
+    new_ctx = ClassDefContext(class_def, nodes.Expression(0, 0), ctx.api)
     return mypy_attrs.attr_class_maker_callback(new_ctx, True)
 
 
 def build_info(class_def: nodes.ClassDef, ctx: DynamicClassDefContext):
     info = nodes.TypeInfo(nodes.SymbolTable(), class_def, ctx.api.cur_mod_id)
+    for statement in class_def.defs.body:
+        if isinstance(statement, nodes.AssignmentStmt):
+            name_stmt = t.cast(nodes.NameExpr, statement.lvalues[0])
+            name = name_stmt.name
+            var = nodes.Var(name, statement.type)
+            info.names[name] = nodes.SymbolTableNode(
+                nodes.MDEF, var, plugin_generated=True
+            )
+
     obj = ctx.api.builtin_type("builtins.object")
     info.mro = [info, obj.type]
     info.bases = [obj]
