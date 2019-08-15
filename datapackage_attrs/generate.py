@@ -1,23 +1,23 @@
 import typing as t
 
 import attr
-from tableschema import Field, Schema
+from tableschema import Field, Schema  # type: ignore
 
-from _types import TypeInfo, type_map
+from ._types import TypeInfo, type_map
 
 
 def make_attr_ib(field: Field):
-    field_type_info: TypeInfo = type_map.get(field.type, TypeInfo(t.Any))
+    info: t.Optional[TypeInfo] = type_map.get(field.type, None)
     validators = []
-    if field_type_info.py_type != t.Any:
-        instance_of = attr.validators.instance_of(field_type_info.py_type)
+    if info:
+        instance_of: t.Any = attr.validators.instance_of(info.py_type)
         if not field.required:
             instance_of = attr.validators.optional(instance_of)
         validators.append(instance_of)
     return (
         field.name,
         attr.ib(
-            type=field_type_info.py_type,
+            type=info.py_type if info else t.Any,
             validator=validators,
             default=attr.NOTHING if field.required else None,
         ),
