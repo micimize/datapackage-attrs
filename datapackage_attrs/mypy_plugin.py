@@ -1,5 +1,8 @@
+from textwrap import dedent
+
 import mypy.nodes as nodes
 from mypy.mro import MroError, calculate_mro
+from mypy.parse import parse as mypy_parse
 from mypy.plugin import (
     ClassDefContext,
     DynamicClassDefContext,
@@ -7,7 +10,12 @@ from mypy.plugin import (
     Plugin,
     SemanticAnalyzerPluginInterface,
 )
+from mypy.plugins import attrs as mymy_attrs
 from tableschema import Field, Schema
+
+
+def parse_hack(class_def: str) -> nodes.ClassDef:
+    return mypy_parse(dedent(class_def), "", "", None, options.Options()).defs[0]
 
 
 class MyPlugin(Plugin):
@@ -19,30 +27,25 @@ class MyPlugin(Plugin):
         return None
 
 
-# You can either tediously construct the ClassDef Block with
-# AssignmentStmt(NameExpr('bar'), TempNode(Any), type=UnboundType('int', [], int)), etc
-# or reconstruct the class string.
-# There's already an attrs plugin for mypy, so maybe you can just decorate the constructed class
-# here and leverage that.
-# Also, if you just generate class strings, you can generate code later easily
 def schema_info_hook(ctx: DynamicClassDefContext) -> None:
-    class_def = nodes.ClassDef(ctx.name, nodes.Block([]))
+    print(ctx)
+    class_def = parse_hack(
+        """
+        @attr.s(auto_attribs=True)
+        class Foo:
+            bar: int
+            baz: str
+        """
+    )
     class_def.fullname = ctx.api.qualified_name(ctx.name)
-
     info = nodes.TypeInfo(nodes.SymbolTable(), class_def, ctx.api.cur_mod_id)
-    class_def.info = info
-    class_def.base
-    info.bases = [ctx.api.builtin_type("builtins.object")]
-
-    ctx.api.add_symbol_table_node(ctx.name, nodes.SymbolTableNode(nodes.GDEF, info))
+    class_def.info = build_info(class_def, ctx)
+    return attrs.attr_class_maker_callback(class_def, ctx)
 
 
-def add_var_to_class(name: str, typ: nodes.Type, info: nodes.TypeInfo) -> None:
-    """Add a variable with given name and type to the symbol table of a class.
-    This also takes care about setting necessary attributes on the variable node.
-    """
-    var = Var(name)
-    var.info = info
-    var._fullname = info.fullname() + "." + name
-    var.type = typ
-    info.names[name] = nodes.SymbolTableNode(nodes.MDEF, var)
+def build_info(cass_def: nodes.ClassDef, ctx: DynamicClassDefContext):
+    info = nodes.TypeInfo(nodes.SymbolTable(), class_def, ctx.api.cur_mod_id)
+    obj = ctx.api.builtin_type("builtins.object")
+    info.mro = [info, obj.type]
+    info.bases = [obj]
+    return info
