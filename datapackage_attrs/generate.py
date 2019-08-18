@@ -1,9 +1,11 @@
 import typing as t
+from textwrap import dedent
 
 import attr
 from tableschema import Field, Schema  # type: ignore
 
-from ._types import TypeInfo, type_map
+from ._types import TypeInfo, get_type_info
+from .module_classes import ModuleSnippet, SchemaClassDefinition
 
 
 def make_attr_ib(field: Field):
