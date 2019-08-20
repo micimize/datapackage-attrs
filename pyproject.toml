@@ -17,6 +17,22 @@ homepage = "https://github.com/micimize/frictionless-code-generator"
 
 keywords = []
 
+[[tool.codegen.tableschemas]]
+tableschema_path = "examples/test_schema_full.json"
+target_file = "examples/test_schema_full.py"
+class_name = "TestSchemaFull"
+summary = "A type generated from a full test schema"
+description = """
+A test type with all base table schema types.
+Has a particularly long docstring
+"""
+
+[[tool.codegen.tableschemas]]
+tableschema_path = "examples/test_simple_schema.json"
+target_file = "examples/test_simple_schema.py"
+class_name = "TestSimpleSchema"
+summary = "A type generated from a small test schema"
+
 [tool.poetry.dependencies]
 python = "^3.7"
 attrs = "=19.1"
@@ -24,6 +40,7 @@ typing_extensions = "^3.7"
 cattrs = "^0.9.0"
 animal_case = "^0.4.1"
 tableschema = "^1.6"
+jinja2 = "^2.10"
 
 [tool.poetry.dev-dependencies]
 # type hints / checking

@@ -1,0 +1,23 @@
+{
+  "fields": [
+    {
+      "name": "id",
+      "description": "The unique identifier for this entity",
+      "title": "Identifier",
+      "type": "integer",
+      "constraints": {
+        "required": true
+      }
+    },
+    {
+      "name": "title",
+      "title": "Title",
+      "type": "string"
+    },
+    {
+      "name": "timestamp",
+      "title": "Timestamp",
+      "type": "datetime"
+    }
+  ]
+}

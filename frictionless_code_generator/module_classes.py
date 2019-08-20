@@ -1,6 +1,6 @@
 import re
 import typing as t
-from textwrap import dedent
+from textwrap import dedent, indent
 
 import attr
 from tableschema import Field, Schema  # type: ignore
@@ -10,7 +10,7 @@ from ._types import TypeInfo, get_type_info
 _NL = "\n\s*"
 
 
-def _clean_newlines(snippet: str):
+def _clean_newlines(snippet: str, max_empty_lines=3):
     return re.sub(f"{_NL}{_NL}{_NL}{_NL}", "\n\n\n", snippet)
 
 
@@ -94,13 +94,15 @@ class SchemaClassDefinition:
     """
     Attributes:
         class_name: PascalCase python class name
-        docstring: Docstring to generate the class with
+        summary: Summary doc to generate the class with
+        description: Description doc to generate the class with
         schema: source tableschema for this class
         snippet: The ModuleSnippet that defines this schema class
     """
 
     class_name: str
-    docstring: str
+    summary: str
+    description: t.Optional[str]
     schema: Schema = attr.ib(converter=_convert_schema)
 
     snippet: ModuleSnippet = attr.ib(init=False)
@@ -108,37 +110,67 @@ class SchemaClassDefinition:
     _field_definitions: t.List[str] = attr.ib(factory=list, init=False)
 
     def __attrs_post_init__(self):
-        snippet = ModuleSnippet()
+        snippet = ModuleSnippet(imports={"attr": "attr", "typing": "t"})
         for schema_field in self.schema.fields:
             type_info, type_def = get_type_info(schema_field)
 
             self._field_definitions.append(type_def)
-
             if type_info.source_module:
                 snippet.add_symbol_imports(type_info.source_module, type_info.py_type)
 
-            if type_info.definition:
-                if type_info.definition == True:
-                    snippet.imports["typing"] = "t"
-                else:
-                    snippet.definitions[type_info.py_type] = type_info.definition
+            if type_info.definition and type_info.definition != True:
+                snippet.definitions[type_info.py_type] = type_info.definition
 
         snippet.body = [
-            dedent(
-                f'''
-                @attr.s(auto_attribs=True)
-                class {self.class_name}:
-                    """{self.docstring}
-                    """
-                    {_BREAK_AND_INDENT.join(self._field_definitions)}
-                '''
+            lines(
+                "@attr.s(auto_attribs=True, slots=True)",
+                f"class {self.class_name}:",
+                indent(
+                    lines(
+                        f'"""{self._docstring}',
+                        f'"""',
+                        "",
+                        lines(*self._field_definitions),
+                    ),
+                    prefix="    ",
+                ),
+                "",
             )
         ]
         self.snippet = snippet
+
+    @property
+    def _field_docs(self):
+        return [
+            schema_field.name + ": " + (schema_field.descriptor.get("description", ""))
+            for schema_field in self.schema.fields
+        ]
+
+    @property
+    def _docstring(self):
+        return "".join(
+            [
+                self.summary,
+                "\n\n" + self.description if self.description else "",
+                "\n\nAttributes:\n",
+                indent(lines(*self._field_docs), prefix="    "),
+            ]
+        )
 
     @property
     def class_definition(self):
         return self.body[0]
 
 
-_BREAK_AND_INDENT = "\n                    "
+def _first_option(d: dict, options: t.Iterable):
+    for key in options:
+        value = d.get(options, None)
+        if value is not None:
+            return value
+
+
+def lines(*text):
+    return "\n".join(text)
+
+
+_BREAK_AND_INDENT = "\n   1   2   3   4   5"
