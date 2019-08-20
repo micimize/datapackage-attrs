@@ -24,6 +24,18 @@ def make_attr_ib(field: Field):
         ),
     )
 
+TODO pyproject.toml config
+    *,
+    repr_ns=None,
+    repr=True,
+    cmp=True,
+    hash=None,
+    init=True,
+    slots=True,  # slots on by default
+    frozen=False,
+    weakref_slot=True,
+    kw_only=False,
+    cache_hash=False,
 """
 
 
@@ -50,7 +62,7 @@ class TypeInfo:
 
 any_type = TypeInfo(schema_type="any", py_type="t.Any", definition=True)
 
-types = {
+types = (
     # primitives
     TypeInfo(schema_type="string", py_type="str"),
     TypeInfo(schema_type="boolean", py_type="bool"),
@@ -77,7 +89,7 @@ types = {
     # geo
     # TypeInfo(schema_type="geojson", py_type="geojson"),
     # TypeInfo(schema_type="geojson", py_type="geopoint"),
-}
+)
 
 type_map = {t.schema_type: t for t in types}
 
@@ -86,5 +98,8 @@ def get_type_info(field: Field) -> t.Tuple[TypeInfo, str]:
     info = type_map.get(field.type, any_type)
     return (
         info,
-        f"t.Optional[{info.py_type}] = None" if not field.required else info.py_type,
+        f"{field.name}: "
+        + (
+            f"t.Optional[{info.py_type}] = None" if not field.required else info.py_type
+        ),
     )

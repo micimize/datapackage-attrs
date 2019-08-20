@@ -1,3 +1,4 @@
+import re
 import typing as t
 from textwrap import dedent
 
@@ -6,13 +7,24 @@ from tableschema import Field, Schema  # type: ignore
 
 from ._types import TypeInfo, get_type_info
 
+_NL = "\n\s*"
+
+
+def _clean_newlines(snippet: str):
+    return re.sub(f"{_NL}{_NL}{_NL}{_NL}", "\n\n\n", snippet)
+
 
 def _mapping_block(mapping: dict, join: str, value_join: str = ", ", prefix: str = ""):
     return "\n".join(
-        join.join(
-            [prefix + key, value_join.join(value) if isinstance(value, list) else value]
-        )
-        for key, value in mapping.items()
+        [
+            join.join(
+                [
+                    prefix + key,
+                    value_join.join(value) if not isinstance(value, str) else value,
+                ]
+            )
+            for key, value in mapping.items()
+        ]
     )
 
 
@@ -48,12 +60,14 @@ class ModuleSnippet:
     @property
     def _imports_text(self):
         return "\n\n".join(
-            _mapping_block(self.imports, prefix="import ", join=" as "),
-            _mapping_block(self.symbol_imports, prefix="from ", join=" import "),
+            [
+                _mapping_block(self.imports, prefix="import ", join=" as "),
+                _mapping_block(self.symbol_imports, prefix="from ", join=" import "),
+            ]
         )
 
     @property
-    def _definitions_repre(self):
+    def _definitions_text(self):
         return _mapping_block(self.definitions, join=" = ")
 
     @property
@@ -62,8 +76,8 @@ class ModuleSnippet:
 
     @property
     def file_text(self):
-        return "\n\n\n".join(
-            self._imports_text, self._definitions_text, self._body_text
+        return _clean_newlines(
+            "\n\n\n".join([self._imports_text, self._definitions_text, self._body_text])
         )
 
     def overwrite(self, target: str):
@@ -95,7 +109,7 @@ class SchemaClassDefinition:
 
     def __attrs_post_init__(self):
         snippet = ModuleSnippet()
-        for schema_field in schema.fields:
+        for schema_field in self.schema.fields:
             type_info, type_def = get_type_info(schema_field)
 
             self._field_definitions.append(type_def)
@@ -112,12 +126,12 @@ class SchemaClassDefinition:
         snippet.body = [
             dedent(
                 f'''
-            @attr.s(auto_attribs=True)
-            class {self.class_name}:
-                """{self.docstring}
-                """
-                {_BREAK_AND_INDENT.join(self._field_definitions)}
-            '''
+                @attr.s(auto_attribs=True)
+                class {self.class_name}:
+                    """{self.docstring}
+                    """
+                    {_BREAK_AND_INDENT.join(self._field_definitions)}
+                '''
             )
         ]
         self.snippet = snippet
@@ -127,4 +141,4 @@ class SchemaClassDefinition:
         return self.body[0]
 
 
-_BREAK_AND_INDENT = "\n    "
+_BREAK_AND_INDENT = "\n                    "
