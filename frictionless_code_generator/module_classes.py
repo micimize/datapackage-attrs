@@ -1,6 +1,6 @@
 import re
 import typing as t
-from textwrap import dedent, indent
+from textwrap import TextWrapper, dedent, indent
 
 import attr
 from tableschema import Field, Schema  # type: ignore
@@ -8,6 +8,8 @@ from tableschema import Field, Schema  # type: ignore
 from ._types import TypeInfo, get_type_info
 
 _NL = "\n\s*"
+
+wrapper = TextWrapper(width=70, break_long_words=False, replace_whitespace=False)
 
 
 def _clean_newlines(snippet: str, max_empty_lines=3):
@@ -142,7 +144,14 @@ class SchemaClassDefinition:
     @property
     def _field_docs(self):
         return [
-            schema_field.name + ": " + (schema_field.descriptor.get("description", ""))
+            lines(
+                *wrapper.wrap(
+                    schema_field.name
+                    + ": "
+                    + (schema_field.descriptor.get("description", ""))
+                ),
+                prefix="\n    ",
+            )
             for schema_field in self.schema.fields
         ]
 
@@ -169,8 +178,13 @@ def _first_option(d: dict, options: t.Iterable):
             return value
 
 
-def lines(*text):
-    return "\n".join(text)
+def lines(*text, prefix="\n"):
+    return prefix.join(
+        [
+            lines(*line.split("\n"), prefix=prefix) if "\n" in line else line
+            for line in text
+        ]
+    )
 
 
 _BREAK_AND_INDENT = "\n   1   2   3   4   5"
